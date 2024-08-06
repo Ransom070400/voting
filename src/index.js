@@ -1,23 +1,71 @@
-// XXX even though ethers is not used in the code below, it's very likely
-// it will be used by any DApp, so we are already including it here
+import { ROLLUP_SERVER } from './shared/config';
+import { hexToString } from 'viem';
+import { RollupStateHandler } from './shared/rollup-state-handler';
+import { controller } from './controller';
+
 const { ethers } = require("ethers");
 
 const rollup_server = process.env.ROLLUP_HTTP_SERVER_URL;
 console.log("HTTP rollup_server url is " + rollup_server);
 
+// Define a map to store the votes
+var votes = {};
+
+// Function to handle advance requests
 async function handle_advance(data) {
   console.log("Received advance request data " + JSON.stringify(data));
   return "accept";
 }
 
+// Function to handle inspect requests
 async function handle_inspect(data) {
   console.log("Received inspect request data " + JSON.stringify(data));
   return "accept";
 }
 
+// Function to handle vote requests
+async function handle_vote(data) {
+  console.log("Received vote request data " + JSON.stringify(data));
+  const voter = data.voter;
+  const candidate = data.candidate;
+
+  // Check if the voter has already voted
+  if (votes[voter]) {
+    console.log("Voter has already voted");
+    return "reject";
+  }
+
+  // Increment the vote count for the candidate
+  if (!votes[candidate]) {
+    votes[candidate] = 1;
+  } else {
+    votes[candidate]++;
+  }
+
+  // Mark the voter as having voted
+  votes[voter] = true;
+
+  return "accept";
+}
+
+// Function to handle get votes requests
+async function handle_get_votes(data) {
+  console.log("Received get votes request data " + JSON.stringify(data));
+  const candidate = data.candidate;
+
+  // Return the vote count for the candidate
+  if (!votes[candidate]) {
+    return { votes: 0 };
+  } else {
+    return { votes: votes[candidate] };
+  }
+}
+
 var handlers = {
   advance_state: handle_advance,
   inspect_state: handle_inspect,
+  vote: handle_vote,
+  get_votes: handle_get_votes,
 };
 
 var finish = { status: "accept" };
